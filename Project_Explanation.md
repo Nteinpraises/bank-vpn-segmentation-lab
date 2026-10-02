@@ -3,7 +3,7 @@
 **Author:** Meleng — IT Intern, Bridge Technologies Solutions (Douala, Cameroon)
 **Tools:** GNS3, VMware Workstation Pro, FortiGate (FortiOS 7.0.14), Cisco IOS 12.4, Docker (Alpine Linux)
 
-This document is a complete, plain-language walkthrough of the project — what it is, why it's built the way it is, how it was tested, and what went wrong along the way. It's written so I can use it to explain the project to a supervisor, in an interview, or as the README for the GitHub repo.
+This document is a complete, plain-language walkthrough of the project — what it is, why it's built the way it is, how it was tested, and what went wrong along the way.
 
 ---
 
@@ -11,10 +11,10 @@ This document is a complete, plain-language walkthrough of the project — what 
 
 A bank with a Head Office and a Branch needs two things at once:
 
-1. **Internal separation** — staff, servers, databases, ATMs, and guests should not all sit on one flat network. If one device is compromised, the damage should stay contained.
-2. **Secure communication between sites** — Head Office and Branch need to share application and transaction traffic over a link neither of them physically controls (the Internet), without that traffic being readable or alterable in transit.
+1. **Internal separation** staff, servers, databases, ATMs, and guests should not all sit on one flat network. If one device is compromised, the damage should stay contained.
+2. **Secure communication between sites** Head Office and Branch need to share application and transaction traffic over a link neither of them physically controls (the Internet), without that traffic being readable or alterable in transit.
 
-This project builds both, in a simulated lab, and proves — not just claims — that they work.
+This project builds both, in a simulated lab, and proves not just claims that they work.
 
 ## 2. What was actually built
 
@@ -77,7 +77,6 @@ Almost every real lesson in this project came from something breaking, not from 
 - **The evaluation license caps the firewall at 10 policies per VDOM**, which forced real design decisions about which flows could be merged into one rule without losing clarity.
 - **The single most instructive bug**: giving a firewall's management interface a DHCP address (to make the admin GUI reachable from a real browser) caused FortiOS to silently install a *second* default route learned from that DHCP lease — and because DHCP-learned routes get a better administrative distance than a manually configured static route, the firewall's entire default route silently switched away from the real WAN link. This broke the VPN's ability to reach the other site at all, with no obvious error pointing at the cause — it had to be found by reading the routing table directly and noticing the default route pointed somewhere unexpected. The fix was two-fold: raise the static default route's own distance so it wins again, and explicitly disable `defaultgw` on the DHCP-configured interface so it never contests the default route in the first place.
 
-That last one is worth explaining to anyone reviewing the project, because it's a real, general networking principle, not a one-off lab quirk: **any interface that pulls a DHCP lease can silently take over routing decisions unless you explicitly tell it not to.**
 
 ## 9. Limitations, stated honestly
 
@@ -85,11 +84,5 @@ That last one is worth explaining to anyone reviewing the project, because it's 
 - ICMP was added to every policy purely so the lab's simple test hosts could exercise the rules; a production ruleset would remove it except where genuinely needed for monitoring.
 - The firewalls' admin HTTPS service has a bug on this image (the TLS handshake resets before completing) — the admin GUI is only reachable over plain HTTP, which is not something a real deployment should ever do. This is documented as an image defect, not a design choice.
 - Logging lives in memory only, since there's no log disk attached, so it doesn't survive a reboot.
-
-## 10. How to explain this project in one minute
-
-*"I built and tested the network security for a simulated bank with a Head Office and a Branch, using two FortiGate firewalls joined by a site-to-site IPsec VPN. Every VLAN's traffic has to pass through the firewall to reach any other VLAN, and I wrote least-privilege rules so that only named, necessary flows are allowed — staff can reach the application, but never the database directly; only the application server can. The two sites are joined by an encrypted tunnel, and I proved it works with real HTTPS traffic crossing it, not just ping. Along the way I hit and fixed several real FortiOS issues — the most interesting one being a firewall silently rerouting its own Internet connection because of a DHCP interface I added later for browser access, which I found by reading the routing table and fixed by disabling that interface as a default-route source."*
-
----
 
 *This document accompanies the full project report (topology diagrams, IP addressing plan, complete firewall rule tables, and detailed test results) and the GNS3 lab files in this repository.*
